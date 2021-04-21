@@ -11,21 +11,27 @@ import { getPrismicClient } from '../../services/prismic';
 
 import commonStyles from '../../styles/common.module.scss';
 import styles from './post.module.scss';
+import { useEffect, useState } from 'react';
 
+type Content = {
+  content: {
+    heading: string;
+    body: {
+      text: string;
+    }[];
+  }[];
+}
 interface Post {
+  uid: string;
   first_publication_date: string | null;
   data: {
     title: string;
     banner: {
       url: string;
     };
+    subtitle: string;
     author: string;
-    content: {
-      heading: string;
-      body: {
-        text: string;
-      }[];
-    }[];
+    content: Content;
   };
 }
 
@@ -34,6 +40,32 @@ interface PostProps {
 }
 
 export default function Post({ post }: PostProps) {
+  const [estimate, setEstimate] = useState<number>(0);
+  useEffect(() => {
+    
+    
+    post.first_publication_date = formatDate(post.first_publication_date);
+
+    setEstimate(calculateReadingEstimate(post.data.content));
+  }, []);
+
+
+  function formatDate(date: string){
+    return format(
+      new Date(date),
+      "dd MMM yyy",
+      {
+        locale: ptBr
+      }
+    );
+  }
+
+  function calculateReadingEstimate(content: Content){
+  console.log(content);
+    let allText = "";
+
+    return 1;
+  }
   return (
     <>
       <Head>
@@ -44,7 +76,7 @@ export default function Post({ post }: PostProps) {
         <div className={styles.container}>
           <div className="post">
             <div className="post_header">
-              <img src={post.data.banner.url} alt="image" />
+              <img src={post.data.banner?.url} alt="image" />
             </div>
             <div className="post_header_info">
               <h1>{post.data.title}</h1>
@@ -58,7 +90,7 @@ export default function Post({ post }: PostProps) {
                   {post.data.author}
                 </span>
                 <span className={commonStyles.info}>
-                  <FiClock />4 min
+                  <FiClock />{estimate} min
                 </span>
               </div>
             </div>
@@ -88,32 +120,24 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
   const prismic = getPrismicClient();
   const { slug } = params;
   const response = await prismic.getByUID('posts', String(slug), {});
-
-  // TODO
-  const post = {
+  console.log(response);
+  const post:Post = {
+    uid: response.uid,
     first_publication_date: response.first_publication_date,
     data: {
       author: response.data.author,
       title: response.data.title,
+      subtitle: response.data.subtitle,
       banner: {
-        url: response.data.banner.url,
+        url: response.data.banner?.url,
       },
-      content: [
-        {
-          heading: response.data.content[0].heading,
-          body: [
-            {
-              text: RichText.asHtml(response.data.content[0].body),
-            },
-          ],
-        },
-      ],
+      content: response.data.content,
     },
   };
   return {
     props: {
       post,
     },
-    revalidate: 1,
+    revalidate: 60 * 30,
   };
 };
