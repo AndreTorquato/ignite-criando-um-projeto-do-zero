@@ -4,23 +4,17 @@ import { FiCalendar } from 'react-icons/fi';
 import { FiClock } from 'react-icons/fi';
 import { FaUser } from 'react-icons/fa';
 import { format } from 'date-fns';
+import { getPrismicClient } from '../../services/prismic';
 import Head from 'next/head';
 import Header from '../../components/Header';
 import ptBr from 'date-fns/locale/pt-BR';
-import { getPrismicClient } from '../../services/prismic';
+import Prismic from '@prismicio/client';
 
 import commonStyles from '../../styles/common.module.scss';
 import styles from './post.module.scss';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 
-type Content = {
-  content: {
-    heading: string;
-    body: {
-      text: string;
-    }[];
-  }[];
-}
 interface Post {
   uid: string;
   first_publication_date: string | null;
@@ -31,7 +25,12 @@ interface Post {
     };
     subtitle: string;
     author: string;
-    content: Content;
+    content: {
+      heading: string;
+      body: {
+        text: string;
+      }[];
+    }[];
   };
 }
 
@@ -40,31 +39,43 @@ interface PostProps {
 }
 
 export default function Post({ post }: PostProps) {
-  const [estimate, setEstimate] = useState<number>(0);
-  useEffect(() => {
-    
-    
-    post.first_publication_date = formatDate(post.first_publication_date);
 
-    setEstimate(calculateReadingEstimate(post.data.content));
+  const [estimate, setEstimate] = useState('0 min');
+  const router = useRouter();
+
+  useEffect(() => {
+    post.first_publication_date = formatDate(post.first_publication_date);
+    
+    setEstimate(String(calculateReadingEstimate(post.data.content)) + ' min');
   }, []);
 
-
-  function formatDate(date: string){
-    return format(
-      new Date(date),
-      "dd MMM yyy",
-      {
-        locale: ptBr
-      }
-    );
+  function formatDate(date: string) {
+    const newDate = format(new Date(date), 'dd MMM yyy', {
+      locale: ptBr,
+    });
+    return newDate;
   }
 
-  function calculateReadingEstimate(content: Content){
-  console.log(content);
-    let allText = "";
+  function calculateReadingEstimate(
+    content: {
+      heading: string;
+      body: {
+        text: string;
+      }[];
+    }[]
+  ) {
+    const wordsMinute = 200;
+    const totalWords = content.reduce((acc, current) => {
+      acc += current.heading.split(/\s/g).length;
+      acc += RichText.asText(current.body).split(/\s/g).length;
+      return acc;
+    }, 0);
 
-    return 1;
+    return Math.ceil(totalWords / wordsMinute);
+  }
+
+  if(router.isFallback){
+    return <div>Carregando...</div>
   }
   return (
     <>
@@ -73,12 +84,12 @@ export default function Post({ post }: PostProps) {
       </Head>
       <div className={styles.content}>
         <Header />
-        <div className={styles.container}>
-          <div className="post">
-            <div className="post_header">
+        <div>
+          <div className={styles.post}>
+            <div className={styles.post_header}>
               <img src={post.data.banner?.url} alt="image" />
             </div>
-            <div className="post_header_info">
+            <div>
               <h1>{post.data.title}</h1>
               <div>
                 <span className={commonStyles.info}>
@@ -90,15 +101,19 @@ export default function Post({ post }: PostProps) {
                   {post.data.author}
                 </span>
                 <span className={commonStyles.info}>
-                  <FiClock />{estimate} min
+                  <FiClock />
+                  {estimate}
                 </span>
               </div>
             </div>
-            <div
-              dangerouslySetInnerHTML={{
-                __html: post.data.content[0].body[0].text,
-              }}
-            ></div>
+            {
+              post.data.content.map((content) => (
+                <div className={styles.container}key={content.heading}>
+                <h2>{content.heading}</h2>
+                <div dangerouslySetInnerHTML={{__html: RichText.asHtml(content.body)}}></div>
+                </div>
+              ))
+            }
           </div>
         </div>
       </div>
@@ -108,11 +123,17 @@ export default function Post({ post }: PostProps) {
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const prismic = getPrismicClient();
-  // const posts = await prismic.query(TODO);
+  const posts = await prismic.query(
+    [Prismic.predicates.at("document.type", "posts")],
+    {
+      pageSize: 20
+    }
+    );
 
+    console.log(posts);
   return {
-    paths: [{ params: { slug: 'post' } }],
-    fallback: 'blocking',
+    paths: [{ params: { slug: posts[0]?.uid } }],
+    fallback: true,
   };
 };
 
@@ -120,8 +141,7 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
   const prismic = getPrismicClient();
   const { slug } = params;
   const response = await prismic.getByUID('posts', String(slug), {});
-  console.log(response);
-  const post:Post = {
+  const post: Post = {
     uid: response.uid,
     first_publication_date: response.first_publication_date,
     data: {

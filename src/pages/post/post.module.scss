@@ -1,6 +1,34 @@
-.content{
-  
-  max-width: 700px;
-  margin: auto;
+.content {
   color: var(--heading);
+  margin: auto;
+  max-width: 700px;
+}
+.post {
+
+  & > div + div{
+    h1{
+      margin: 3rem 0 0.25rem;
+    }
+    & > div{
+      margin: 1rem 0;
+    }
+  }
+  .container{
+    h2{
+      line-height: 1em;
+    }
+    p, strong{
+      color: var(--body);
+      line-height: 1.2rem;
+    }
+    ol, ul{
+      
+        padding: 1.2rem;
+    }
+    a{
+
+      color: var(--highlight);
+      text-decoration: none;
+    }
+  }
 }

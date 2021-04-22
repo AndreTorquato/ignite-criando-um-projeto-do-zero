@@ -1,3 +1,12 @@
 .info{
+    display: inline-flex;
+    align-items: center;
     color: var(--info);
+    & + span{
+        margin-left: 1rem;
+    }
+    svg{
+        margin-right: 0.5rem;
+    }
+
 }
