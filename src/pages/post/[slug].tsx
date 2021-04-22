@@ -39,14 +39,14 @@ interface PostProps {
 }
 
 export default function Post({ post }: PostProps) {
-
   const [estimate, setEstimate] = useState('0 min');
   const router = useRouter();
 
   useEffect(() => {
-    post.first_publication_date = formatDate(post.first_publication_date);
-    
-    setEstimate(String(calculateReadingEstimate(post.data.content)) + ' min');
+    if (!router.isFallback) {
+      post.first_publication_date = formatDate(post.first_publication_date);
+      setEstimate(String(calculateReadingEstimate(post.data.content)) + ' min');
+    }
   }, []);
 
   function formatDate(date: string) {
@@ -74,47 +74,51 @@ export default function Post({ post }: PostProps) {
     return Math.ceil(totalWords / wordsMinute);
   }
 
-  if(router.isFallback){
-    return <div>Carregando...</div>
-  }
   return (
     <>
       <Head>
-        <title>{post.data.title}</title>
+        <title>{post?.data.title}</title>
       </Head>
       <div className={styles.content}>
         <Header />
         <div>
-          <div className={styles.post}>
-            <div className={styles.post_header}>
-              <img src={post.data.banner?.url} alt="image" />
-            </div>
-            <div>
-              <h1>{post.data.title}</h1>
-              <div>
-                <span className={commonStyles.info}>
-                  <FiCalendar />
-                  {post.first_publication_date}
-                </span>
-                <span className={commonStyles.info}>
-                  <FaUser />
-                  {post.data.author}
-                </span>
-                <span className={commonStyles.info}>
-                  <FiClock />
-                  {estimate}
-                </span>
+          {router.isFallback ? (
+            <div>Carregando...</div>
+          ) : (
+            <div className={styles.post}>
+              <div className={styles.post_header}>
+                <img src={post.data.banner?.url} alt="image" />
               </div>
-            </div>
-            {
-              post.data.content.map((content) => (
-                <div className={styles.container}key={content.heading}>
-                <h2>{content.heading}</h2>
-                <div dangerouslySetInnerHTML={{__html: RichText.asHtml(content.body)}}></div>
+              <div>
+                <h1>{post.data.title}</h1>
+                <div>
+                  <span className={commonStyles.info}>
+                    <FiCalendar />
+                    {post.first_publication_date}
+                  </span>
+                  <span className={commonStyles.info}>
+                    <FaUser />
+                    {post.data.author}
+                  </span>
+                  <span className={commonStyles.info}>
+                    <FiClock />
+                    {estimate}
+                  </span>
                 </div>
-              ))
-            }
-          </div>
+              </div>
+
+              {post.data.content.map(content => (
+                <div className={styles.container} key={content.heading}>
+                  <h2>{content.heading}</h2>
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: RichText.asHtml(content.body),
+                    }}
+                  ></div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -124,15 +128,19 @@ export default function Post({ post }: PostProps) {
 export const getStaticPaths: GetStaticPaths = async () => {
   const prismic = getPrismicClient();
   const posts = await prismic.query(
-    [Prismic.predicates.at("document.type", "posts")],
+    [Prismic.predicates.at('document.type', 'posts')],
     {
-      pageSize: 20
+      pageSize: 20,
     }
-    );
+  );
 
-    console.log(posts);
+  const params = posts.results.map(post => {
+    return {
+      params: { slug: post.uid },
+    };
+  });
   return {
-    paths: [{ params: { slug: posts[0]?.uid } }],
+    paths: [...params],
     fallback: true,
   };
 };
