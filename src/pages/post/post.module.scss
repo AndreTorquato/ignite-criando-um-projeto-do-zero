@@ -4,7 +4,13 @@
   max-width: 700px;
 }
 .post {
-
+  .post_header{
+    
+    img{
+      max-width: 700px;
+      max-height: 400px;
+    }
+  }
   & > div + div{
     h1{
       margin: 3rem 0 0.25rem;
