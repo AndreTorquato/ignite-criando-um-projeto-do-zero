@@ -14,7 +14,7 @@ import commonStyles from '../../styles/common.module.scss';
 import styles from './post.module.scss';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { UtterancesComments } from '../../components/UtterancesComments';
+import { useUtterances } from '../../hooks/UtterancesComments';
 
 interface Post {
   uid: string;
@@ -39,9 +39,12 @@ interface PostProps {
   post: Post;
 }
 
+const commentNodeId= 'comments';
+
 export default function Post({ post }: PostProps) {
   const [estimate, setEstimate] = useState('0 min');
   const router = useRouter();
+  useUtterances(commentNodeId);
 
   useEffect(() => {
     if (!router.isFallback) {
@@ -121,7 +124,7 @@ export default function Post({ post }: PostProps) {
             </div>
           )}
         </div>
-        <UtterancesComments />
+        <div id={commentNodeId}></div>
       </div>
     </>
   );
