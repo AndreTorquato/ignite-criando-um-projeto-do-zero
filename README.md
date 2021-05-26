@@ -1,6 +1,6 @@
 <h1 align="center">
 	<img alt="Logo" src="public/favicon.png" width="24px" />
-  spacetravelling
+  spacetraveling
 </h1>
 
 <h3 align="center">
