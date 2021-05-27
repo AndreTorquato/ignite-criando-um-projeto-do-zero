@@ -10,12 +10,21 @@ export default async (req, res) => {
   if (!redirectUrl) {
     return res.status(401).json({ message: 'Invalid token' });
   }
+
+  res.setPreviewData({ ref });
+
+  res.write(
+    `<!DOCTYPE html><html><head><meta http-equiv="Refresh" content="0; url=${redirectUrl}" />
+    <script>window.location.href = '${redirectUrl}'</script>
+    </head>`
+  );
+  res.end();
 };
 
 function linkResolver(doc: Document): string {
   console.log(doc);
   if (doc.type === 'posts') {
-    return `/posts/${doc.uid}`;
+    return `/post/${doc.uid}`;
   }
 
   return '/';
