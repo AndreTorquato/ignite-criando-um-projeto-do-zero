@@ -15,6 +15,7 @@ import styles from './post.module.scss';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useUtterances } from '../../hooks/UtterancesComments';
+import { ExitPreviewButton } from '../../components/ExitPreviewButton';
 
 interface Post {
   uid: string;
@@ -37,15 +38,19 @@ interface Post {
 
 interface PostProps {
   post: Post;
+  preview: boolean;
+  previewData?: {
+    ref: string;
+  }
 }
 
 const commentNodeId= 'comments';
 
-export default function Post({ post }: PostProps) {
+export default function Post({ post, preview }: PostProps) {
   const [estimate, setEstimate] = useState('0 min');
   const router = useRouter();
   useUtterances(commentNodeId);
-
+  console.log(post);
   useEffect(() => {
     if (!router.isFallback) {
       post.first_publication_date = formatDate(post.first_publication_date);
@@ -70,8 +75,10 @@ export default function Post({ post }: PostProps) {
   ) {
     const wordsMinute = 200;
     const totalWords = content.reduce((acc, current) => {
-      acc += current.heading.split(/\s/g).length;
-      acc += RichText.asText(current.body).split(/\s/g).length;
+      if(current.heading && current.body.length > 0){
+        acc += current.heading.split(/\s/g).length;
+        acc += RichText.asText(current.body).split(/\s/g).length;
+      }      
       return acc;
     }, 0);
 
@@ -126,6 +133,9 @@ export default function Post({ post }: PostProps) {
         </div>
         <div id={commentNodeId}></div>
       </div>
+      { preview && (
+        <ExitPreviewButton />
+      )}
     </>
   );
 }
@@ -150,13 +160,17 @@ export const getStaticPaths: GetStaticPaths = async () => {
   };
 };
 
-export const getStaticProps: GetStaticProps = async ({ params }) => {
+export const getStaticProps: GetStaticProps<PostProps> = async ({
+   params, 
+   preview = false,
+   previewData }) => {
   const prismic = getPrismicClient();
   const { slug } = params;
-  const response = await prismic.getByUID('posts', String(slug), {});
+  const response = await prismic.getByUID('posts', String(slug), 
+  { ref: previewData?.ref ?? null });
   const post: Post = {
-    uid: response.uid,
-    first_publication_date: response.first_publication_date,
+    uid: response?.uid,
+    first_publication_date: response?.first_publication_date,
     data: {
       author: response.data.author,
       title: response.data.title,
@@ -170,6 +184,7 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
   return {
     props: {
       post,
+      preview
     },
     revalidate: 60 * 30,
   };

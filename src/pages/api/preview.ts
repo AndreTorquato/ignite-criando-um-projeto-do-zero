@@ -22,7 +22,6 @@ export default async (req, res) => {
 };
 
 function linkResolver(doc: Document): string {
-  console.log(doc);
   if (doc.type === 'posts') {
     return `/post/${doc.uid}`;
   }

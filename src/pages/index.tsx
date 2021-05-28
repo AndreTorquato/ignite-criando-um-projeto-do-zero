@@ -13,6 +13,7 @@ import styles from './home.module.scss';
 
 import Header from '../components/Header';
 import { useEffect, useState } from 'react';
+import { ExitPreviewButton } from '../components/ExitPreviewButton';
 
 interface Post {
   uid?: string;
@@ -31,9 +32,13 @@ interface PostPagination {
 
 interface HomeProps {
   postsPagination: PostPagination;
+  preview: boolean;
+  previewData?: {
+    ref: string;
+  };
 }
 
-export default function Home({ postsPagination }: HomeProps) {
+export default function Home({ postsPagination, preview }: HomeProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [formatPosts, setFormatPosts] = useState(true);
 
@@ -97,18 +102,26 @@ export default function Home({ postsPagination }: HomeProps) {
         ))}
         { postsPagination?.next_page && <button type="button" onClick={loadMorePosts}>Carregar mais posts</button>}
       </section>
+      { preview && (
+        <ExitPreviewButton />
+      )}
     </>
   );
 }
 
-export const getStaticProps: GetStaticProps = async () => {
+export const getStaticProps: GetStaticProps<HomeProps> = async ({
+  preview = false, 
+  previewData
+}) => {
   const prismic = getPrismicClient();
   const postsResponse = await prismic.query(
     [Prismic.predicates.at("document.type", "posts")],
     {
-      pageSize: 2
+      ref: previewData?.ref ?? null,
+      pageSize: 4,
     }
   );
+  
   const posts: Post[] = postsResponse.results.map(post => {
     return {
       uid: post.uid,
@@ -127,7 +140,8 @@ export const getStaticProps: GetStaticProps = async () => {
   }
   return {
     props: {
-      postsPagination
+      postsPagination,
+      preview,
     }
   }
 };
