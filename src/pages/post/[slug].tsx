@@ -5,6 +5,7 @@ import { FiClock } from 'react-icons/fi';
 import { FaUser } from 'react-icons/fa';
 import { format } from 'date-fns';
 import { getPrismicClient } from '../../services/prismic';
+import Link from 'next/link';
 import Head from 'next/head';
 import Header from '../../components/Header';
 import ptBr from 'date-fns/locale/pt-BR';
@@ -41,16 +42,15 @@ interface PostProps {
   preview: boolean;
   previewData?: {
     ref: string;
-  }
+  };
 }
 
-const commentNodeId= 'comments';
+const commentNodeId = 'comments';
 
 export default function Post({ post, preview }: PostProps) {
   const [estimate, setEstimate] = useState('0 min');
   const router = useRouter();
   useUtterances(commentNodeId);
-  console.log(post);
   useEffect(() => {
     if (!router.isFallback) {
       post.first_publication_date = formatDate(post.first_publication_date);
@@ -75,10 +75,10 @@ export default function Post({ post, preview }: PostProps) {
   ) {
     const wordsMinute = 200;
     const totalWords = content.reduce((acc, current) => {
-      if(current.heading && current.body.length > 0){
+      if (current.heading && current.body.length > 0) {
         acc += current.heading.split(/\s/g).length;
         acc += RichText.asText(current.body).split(/\s/g).length;
-      }      
+      }
       return acc;
     }, 0);
 
@@ -131,11 +131,23 @@ export default function Post({ post, preview }: PostProps) {
             </div>
           )}
         </div>
+        <div className={styles.navigate__posts}>
+          <div className={`${styles.navigate} ${styles.back}`}>
+            <div className={styles.navigate__title}>Como fazer um hoook</div>
+            <Link href="/">
+              <a>Post anterior</a>
+            </Link>
+          </div>
+          <div className={`${styles.navigate} ${styles.next}`}>
+            <div className={styles.navigate__title}>Como fazer um hoook</div>
+            <Link href="/">
+              <a>Próximo post</a>
+            </Link>
+          </div>
+        </div>
         <div id={commentNodeId}></div>
       </div>
-      { preview && (
-        <ExitPreviewButton />
-      )}
+      {preview && <ExitPreviewButton />}
     </>
   );
 }
@@ -161,13 +173,15 @@ export const getStaticPaths: GetStaticPaths = async () => {
 };
 
 export const getStaticProps: GetStaticProps<PostProps> = async ({
-   params, 
-   preview = false,
-   previewData }) => {
+  params,
+  preview = false,
+  previewData,
+}) => {
   const prismic = getPrismicClient();
   const { slug } = params;
-  const response = await prismic.getByUID('posts', String(slug), 
-  { ref: previewData?.ref ?? null });
+  const response = await prismic.getByUID('posts', String(slug), {
+    ref: previewData?.ref ?? null,
+  });
   const post: Post = {
     uid: response?.uid,
     first_publication_date: response?.first_publication_date,
@@ -184,7 +198,7 @@ export const getStaticProps: GetStaticProps<PostProps> = async ({
   return {
     props: {
       post,
-      preview
+      preview,
     },
     revalidate: 60 * 30,
   };
