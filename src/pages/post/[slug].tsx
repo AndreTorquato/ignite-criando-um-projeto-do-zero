@@ -21,6 +21,7 @@ import { ExitPreviewButton } from '../../components/ExitPreviewButton';
 interface Post {
   uid: string;
   first_publication_date: string | null;
+  last_publication_date: string | null;
   data: {
     title: string;
     banner: {
@@ -49,16 +50,21 @@ const commentNodeId = 'comments';
 
 export default function Post({ post, preview }: PostProps) {
   const [estimate, setEstimate] = useState('0 min');
+  const [showLastPBDate, setShowLastPBDate] = useState(false);
+  const [firstPBDate, setFirstPBDate] = useState('');
   const router = useRouter();
   useUtterances(commentNodeId);
+
   useEffect(() => {
     if (!router.isFallback) {
-      post.first_publication_date = formatDate(post.first_publication_date);
+      setFirstPBDate(formatDate(post.first_publication_date));
       setEstimate(String(calculateReadingEstimate(post.data.content)) + ' min');
+
+      if (post.last_publication_date) setShowLastPBDate(true);
     }
   }, []);
 
-  function formatDate(date: string) {
+  function formatDate(date: string): string {
     const newDate = format(new Date(date), 'dd MMM yyy', {
       locale: ptBr,
     });
@@ -105,7 +111,7 @@ export default function Post({ post, preview }: PostProps) {
                 <div>
                   <span className={commonStyles.info}>
                     <FiCalendar />
-                    {post.first_publication_date}
+                    {firstPBDate}
                   </span>
                   <span className={commonStyles.info}>
                     <FaUser />
@@ -116,6 +122,11 @@ export default function Post({ post, preview }: PostProps) {
                     {estimate}
                   </span>
                 </div>
+                {showLastPBDate && (
+                  <div className={styles.last__pb__date}>
+                    {post.last_publication_date}
+                  </div>
+                )}
               </div>
 
               {post.data.content.map(content => (
@@ -182,9 +193,20 @@ export const getStaticProps: GetStaticProps<PostProps> = async ({
   const response = await prismic.getByUID('posts', String(slug), {
     ref: previewData?.ref ?? null,
   });
+  let lastPbDate = null;
+  if (response.last_publication_date) {
+    lastPbDate = format(
+      new Date(response?.last_publication_date),
+      "'*editado em 'dd MMM yyyy', às' HH:mm",
+      {
+        locale: ptBr,
+      }
+    );
+  }
   const post: Post = {
     uid: response?.uid,
     first_publication_date: response?.first_publication_date,
+    last_publication_date: lastPbDate,
     data: {
       author: response.data.author,
       title: response.data.title,
