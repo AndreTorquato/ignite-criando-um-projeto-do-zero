@@ -10,6 +10,7 @@ import Head from 'next/head';
 import Header from '../../components/Header';
 import ptBr from 'date-fns/locale/pt-BR';
 import Prismic from '@prismicio/client';
+import { Document as PrismicDocument } from '@prismicio/client/types/documents';
 
 import commonStyles from '../../styles/common.module.scss';
 import styles from './post.module.scss';
@@ -17,6 +18,17 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useUtterances } from '../../hooks/UtterancesComments';
 import { ExitPreviewButton } from '../../components/ExitPreviewButton';
+import ApiSearchResponse from '@prismicio/client/types/ApiSearchResponse';
+
+type LinkPost = {
+  name: string;
+  slug: string;
+};
+
+interface LinksPost {
+  beforePost: LinkPost;
+  nextPost: LinkPost;
+}
 
 interface Post {
   uid: string;
@@ -36,6 +48,7 @@ interface Post {
       }[];
     }[];
   };
+  linksPosts: LinksPost;
 }
 
 interface PostProps {
@@ -144,16 +157,24 @@ export default function Post({ post, preview }: PostProps) {
         </div>
         <div className={styles.navigate__posts}>
           <div className={`${styles.navigate} ${styles.back}`}>
-            <div className={styles.navigate__title}>Como fazer um hoook</div>
-            <Link href="/">
-              <a>Post anterior</a>
-            </Link>
+            { post.linksPosts.beforePost.slug && (
+              <>
+              <div className={styles.navigate__title}>{post.linksPosts.beforePost.name}</div>
+              <Link href={`${post.linksPosts.beforePost.slug}`}>
+                <a>Post anterior</a>
+              </Link>
+              </>
+            )}
           </div>
           <div className={`${styles.navigate} ${styles.next}`}>
-            <div className={styles.navigate__title}>Como fazer um hoook</div>
-            <Link href="/">
+          { post.linksPosts.nextPost.slug && (
+              <>
+            <div className={styles.navigate__title}>{post.linksPosts.nextPost.name}</div>
+            <Link href={`${post.linksPosts.nextPost.slug}`}>
               <a>Próximo post</a>
-            </Link>
+            </Link>              </>
+            )}
+
           </div>
         </div>
         <div id={commentNodeId}></div>
@@ -189,11 +210,22 @@ export const getStaticProps: GetStaticProps<PostProps> = async ({
   previewData,
 }) => {
   const prismic = getPrismicClient();
+
+  const posts: ApiSearchResponse = await prismic.query(
+    [Prismic.predicates.at('document.type', 'posts')],
+    {
+      pageSize: 20,
+    }
+  );
+
   const { slug } = params;
+
   const response = await prismic.getByUID('posts', String(slug), {
     ref: previewData?.ref ?? null,
   });
+
   let lastPbDate = null;
+
   if (response.last_publication_date) {
     lastPbDate = format(
       new Date(response?.last_publication_date),
@@ -203,6 +235,7 @@ export const getStaticProps: GetStaticProps<PostProps> = async ({
       }
     );
   }
+  const linkedPosts = getLinksPosts(response.uid, posts.results);
   const post: Post = {
     uid: response?.uid,
     first_publication_date: response?.first_publication_date,
@@ -216,7 +249,9 @@ export const getStaticProps: GetStaticProps<PostProps> = async ({
       },
       content: response.data.content,
     },
+    linksPosts: linkedPosts,
   };
+
   return {
     props: {
       post,
@@ -225,3 +260,35 @@ export const getStaticProps: GetStaticProps<PostProps> = async ({
     revalidate: 60 * 30,
   };
 };
+
+function getLinksPosts(slug: string, posts: PrismicDocument[]): LinksPost {
+  const currencyIndexPost = posts.findIndex(post => post?.uid === slug);
+
+  let beforePost: LinkPost = {
+    name: null,
+    slug: null,
+  };
+  let nextPost: LinkPost = {
+    name: null,
+    slug: null,
+  };
+
+  if (currencyIndexPost - 1 >= 0) {
+    beforePost = {
+      name: posts[currencyIndexPost - 1]?.data.title,
+      slug: posts[currencyIndexPost - 1]?.uid,
+    };
+  }
+
+  if (currencyIndexPost + 1 <= posts.length - 1) {
+    nextPost = {
+      name: posts[currencyIndexPost + 1]?.data.title,
+      slug: posts[currencyIndexPost + 1]?.uid,
+    };
+  }
+
+  return {
+    beforePost,
+    nextPost,
+  };
+}
